@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NO-Paint : Canvas No Paint Tool</title>
+    <script src="https://unpkg.com/fabric@5.3.0/dist/fabric.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-color: #f3f4f6;
+            overflow: hidden;
+        }
+        .canvas-container {
+            margin: 0 auto;
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+        }
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col">
+
+    <!-- ヘッダー / ツールバー -->
+    <header class="bg-white border-b p-4 flex flex-wrap items-center gap-4 shadow-sm z-10">
+        <div class="flex items-center space-x-2">
+            <h1 class="text-xl font-bold text-gray-800">NO-Paint</h1>
+        </div>
+        
+        <div class="h-6 w-px bg-gray-300 hidden md:block"></div>
+
+        <!-- キャンバスサイズ設定 -->
+        <div class="flex items-center space-x-2 bg-gray-100 p-1 rounded-md">
+            <span class="text-xs font-bold text-gray-500 px-2 uppercase">Size</span>
+            <input type="number" id="canvas-width" value="800" class="w-16 px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <span class="text-gray-400">×</span>
+            <input type="number" id="canvas-height" value="600" class="w-16 px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+
+        <div class="h-6 w-px bg-gray-300 hidden md:block"></div>
+
+        <!-- 操作パネル -->
+        <div class="flex items-center space-x-2">
+            <button id="undo-btn" class="px-3 py-2 border border-gray-300 text-sm rounded hover:bg-gray-50 font-medium text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed" title="Ctrl+Z">
+                元に戻す
+            </button>
+            <div class="h-6 w-px bg-gray-200"></div>
+            <button id="add-text" class="px-3 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition font-medium">
+                テキスト追加
+            </button>
+            <button id="crop-start" class="px-3 py-2 bg-orange-500 text-white text-sm rounded hover:bg-orange-600 transition font-medium hidden">
+                トリミング
+            </button>
+            <button id="crop-confirm" class="px-3 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition font-medium hidden">
+                トリミング確定
+            </button>
+            <button id="bring-forward" class="px-3 py-2 border border-gray-300 text-sm rounded hover:bg-gray-50 font-medium text-gray-700">
+                最前面へ
+            </button>
+            <button id="delete-obj" class="px-3 py-2 bg-red-500 text-white text-sm rounded hover:bg-red-600 transition font-medium">
+                削除
+            </button>
+        </div>
+
+        <div class="flex-1"></div>
+
+        <!-- 書き出し -->
+        <button id="download-btn" class="px-4 py-2 bg-emerald-600 text-white text-sm rounded hover:bg-emerald-700 transition font-medium">
+            PNG保存
+        </button>
+    </header>
+
+    <!-- メインコンテンツ -->
+    <main class="flex-1 overflow-auto p-8 flex justify-center items-start bg-gray-200">
+        <div class="bg-white p-1 rounded shadow-inner">
+            <canvas id="paint-canvas"></canvas>
+        </div>
+    </main>
+
+    <script>
+        const canvasWidthInput = document.getElementById('canvas-width');
+        const canvasHeightInput = document.getElementById('canvas-height');
+        const cropStartBtn = document.getElementById('crop-start');
+        const cropConfirmBtn = document.getElementById('crop-confirm');
+        const undoBtn = document.getElementById('undo-btn');
+        
+        let croppingImage = null;
+        let cropRect = null;
+
+        // アンドゥ用履歴
+        let history = [];
+        const maxHistory = 50;
+        let isProcessingUndo = false;
+
+        // Fabric.jsの初期化
+        const canvas = new fabric.Canvas('paint-canvas', {
+            width: parseInt(canvasWidthInput.value),
+            height: parseInt(canvasHeightInput.value),
+            backgroundColor: '#ffffff'
+        });
+
+        // --- 履歴保存機能 ---
+        function saveHistory() {
+            if (isProcessingUndo) return;
+            
+            const json = canvas.toJSON();
+            history.push(JSON.stringify(json));
+            
+            if (history.length > maxHistory) {
+                history.shift();
+            }
+            updateUndoButtonState();
+        }
+
+        function undo() {
+            if (history.length <= 1) return;
+            
+            isProcessingUndo = true;
+            history.pop(); // 現在の状態を捨てる
+            const prevState = history[history.length - 1];
+            
+            canvas.loadFromJSON(prevState, () => {
+                canvas.renderAll();
+                isProcessingUndo = false;
+                updateUndoButtonState();
+            });
+        }
+
+        function updateUndoButtonState() {
+            undoBtn.disabled = history.length <= 1;
+        }
+
+        // キャンバスの変化を監視して履歴保存
+        canvas.on('object:added', saveHistory);
+        canvas.on('object:modified', saveHistory);
+        canvas.on('object:removed', saveHistory);
+
+        // --- SHIFTキーによる回転スナップ機能 ---
+        canvas.on('object:rotating', (options) => {
+            if (options.e && options.e.shiftKey) {
+                // SHIFTが押されている間は15度刻み
+                options.target.snapAngle = 15;
+            } else {
+                // 押されていない場合は自由回転
+                options.target.snapAngle = 0;
+            }
+        });
+
+        // 初期の状態を保存
+        saveHistory();
+
+        // --- 選択状態の監視 ---
+        canvas.on('selection:created', handleSelection);
+        canvas.on('selection:updated', handleSelection);
+        canvas.on('selection:cleared', () => {
+            cropStartBtn.classList.add('hidden');
+        });
+
+        function handleSelection(e) {
+            const selected = e.selected[0];
+            if (selected && selected.type === 'image' && !croppingImage) {
+                cropStartBtn.classList.remove('hidden');
+            } else {
+                cropStartBtn.classList.add('hidden');
+            }
+        }
+
+        // --- キャンバスサイズ変更機能 ---
+        function updateCanvasSize() {
+            const width = parseInt(canvasWidthInput.value) || 100;
+            const height = parseInt(canvasHeightInput.value) || 100;
+            
+            canvas.setDimensions({ width, height });
+            canvas.renderAll();
+            saveHistory();
+        }
+
+        canvasWidthInput.addEventListener('change', updateCanvasSize);
+        canvasHeightInput.addEventListener('change', updateCanvasSize);
+
+        // --- アンドゥ実行 ---
+        undoBtn.addEventListener('click', undo);
+
+        // --- テキスト追加機能 ---
+        document.getElementById('add-text').addEventListener('click', () => {
+            const text = new fabric.IText('ここをクリックして編集', {
+                left: canvas.width / 2 - 100,
+                top: canvas.height / 2 - 20,
+                fontFamily: 'sans-serif',
+                fontSize: 24,
+                fill: '#333333'
+            });
+            canvas.add(text);
+            canvas.setActiveObject(text);
+        });
+
+        // --- 画像ペースト機能 ---
+        window.addEventListener('paste', (e) => {
+            const items = e.clipboardData.items;
+            for (let i = 0; i < items.length; i++) {
+                if (items[i].type.indexOf('image') !== -1) {
+                    const blob = items[i].getAsFile();
+                    const reader = new FileReader();
+                    
+                    reader.onload = function(event) {
+                        fabric.Image.fromURL(event.target.result, (img) => {
+                            if (img.width > canvas.width * 0.8) {
+                                img.scaleToWidth(canvas.width * 0.8);
+                            }
+                            img.set({
+                                left: canvas.width / 2 - (img.getScaledWidth() / 2),
+                                top: canvas.height / 2 - (img.getScaledHeight() / 2),
+                                cornerColor: '#3b82f6',
+                                cornerStrokeColor: '#1d4ed8',
+                                cornerSize: 10,
+                                transparentCorners: false
+                            });
+                            canvas.add(img);
+                            canvas.setActiveObject(img);
+                        });
+                    };
+                    reader.readAsDataURL(blob);
+                }
+            }
+        });
+
+        // --- トリミング機能 ---
+        cropStartBtn.addEventListener('click', () => {
+            const obj = canvas.getActiveObject();
+            if (!obj || obj.type !== 'image') return;
+
+            croppingImage = obj;
+            canvas.getObjects().forEach(o => o.selectable = false);
+            
+            cropRect = new fabric.Rect({
+                left: obj.left,
+                top: obj.top,
+                width: obj.getScaledWidth() / 2,
+                height: obj.getScaledHeight() / 2,
+                fill: 'rgba(0,0,0,0.3)',
+                stroke: '#fb923c',
+                strokeDashArray: [5, 5],
+                strokeWidth: 2,
+                cornerColor: '#fb923c',
+                hasRotatingPoint: false,
+                transparentCorners: false
+            });
+
+            canvas.add(cropRect);
+            canvas.setActiveObject(cropRect);
+            
+            cropStartBtn.classList.add('hidden');
+            cropConfirmBtn.classList.remove('hidden');
+        });
+
+        cropConfirmBtn.addEventListener('click', () => {
+            if (!croppingImage || !cropRect) return;
+
+            const left = (cropRect.left - croppingImage.left) / croppingImage.scaleX;
+            const top = (cropRect.top - croppingImage.top) / croppingImage.scaleY;
+            const width = cropRect.getScaledWidth() / croppingImage.scaleX;
+            const height = cropRect.getScaledHeight() / croppingImage.scaleY;
+
+            croppingImage.set({
+                clipPath: new fabric.Rect({
+                    left: left - (croppingImage.width / 2),
+                    top: top - (croppingImage.height / 2),
+                    width: width,
+                    height: height
+                })
+            });
+
+            croppingImage.cloneAsImage((cloned) => {
+                canvas.remove(croppingImage);
+                canvas.add(cloned);
+                canvas.setActiveObject(cloned);
+                cleanupCrop();
+            });
+        });
+
+        function cleanupCrop() {
+            canvas.remove(cropRect);
+            canvas.getObjects().forEach(o => o.selectable = true);
+            cropRect = null;
+            croppingImage = null;
+            cropConfirmBtn.classList.add('hidden');
+            canvas.renderAll();
+        }
+
+        // --- 削除機能 ---
+        const deleteActiveObjects = () => {
+            const activeObjects = canvas.getActiveObjects();
+            if (activeObjects.length) {
+                canvas.discardActiveObject();
+                activeObjects.forEach((obj) => {
+                    canvas.remove(obj);
+                });
+                canvas.requestRenderAll();
+            }
+        };
+
+        document.getElementById('delete-obj').addEventListener('click', deleteActiveObjects);
+
+        // --- 重なり順（最前面） ---
+        document.getElementById('bring-forward').addEventListener('click', () => {
+            const activeObject = canvas.getActiveObject();
+            if (activeObject) {
+                activeObject.bringToFront();
+                saveHistory();
+            }
+        });
+
+        // --- PNG保存機能 ---
+        document.getElementById('download-btn').addEventListener('click', () => {
+            const dataURL = canvas.toDataURL({ format: 'png', quality: 1 });
+            const link = document.createElement('a');
+            link.download = 'my-paint-art.png';
+            link.href = dataURL;
+            link.click();
+        });
+
+        // キーボード操作
+        window.addEventListener('keydown', (e) => {
+            // アンドゥ (Ctrl+Z / Cmd+Z)
+            if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+                e.preventDefault();
+                undo();
+                return;
+            }
+
+            // 削除
+            if (e.key === 'Delete' || e.key === 'Backspace') {
+                const activeObject = canvas.getActiveObject();
+                if (activeObject && activeObject.isEditing) return;
+                deleteActiveObjects();
+            }
+        });
+
+        canvas.renderAll();
+    </script>
+</body>
+</html>
