@@ -84,6 +84,12 @@
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
                 <span class="hidden sm:inline">テキスト</span>
             </button>
+            
+            <button id="send-to-back" class="px-3 py-2 bg-gray-600 text-white text-sm rounded-md hover:bg-gray-700 transition font-medium flex items-center gap-1" title="最背面に移動">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><path d="M12 8v8"/><path d="m9 13 3 3 3-3"/></svg>
+                <span class="hidden sm:inline">最背面</span>
+            </button>
+
             <button id="crop-start" class="px-3 py-2 bg-orange-500 text-white text-sm rounded-md hover:bg-orange-600 transition font-medium hidden">
                 トリミング
             </button>
@@ -120,6 +126,7 @@
         const cropStartBtn = document.getElementById('crop-start');
         const cropConfirmBtn = document.getElementById('crop-confirm');
         const undoBtn = document.getElementById('undo-btn');
+        const sendToBackBtn = document.getElementById('send-to-back');
         
         let croppingImage = null;
         let cropRect = null;
@@ -253,6 +260,19 @@
             });
             canvas.add(text);
             canvas.setActiveObject(text);
+        });
+
+        // --- 背面へ移動機能 ---
+        sendToBackBtn.addEventListener('click', () => {
+            const activeObjects = canvas.getActiveObjects();
+            if (activeObjects.length) {
+                activeObjects.forEach(obj => {
+                    canvas.sendToBack(obj);
+                });
+                canvas.discardActiveObject();
+                canvas.renderAll();
+                saveHistory();
+            }
         });
 
         // --- 画像ペースト機能 ---
