@@ -91,10 +91,17 @@
             </button>
 
             <!-- プロパティ調整パネル（選択時のみ表示） -->
-            <div id="prop-controls" class="hidden flex items-center space-x-2 bg-gray-50 border border-gray-200 rounded-md px-3 py-1 animate-in fade-in slide-in-from-left-2 duration-200">
-                <span id="prop-label" class="text-[10px] font-bold text-gray-500 uppercase">Size</span>
-                <input type="range" id="prop-slider" min="1" max="50" value="5" class="w-24 h-1.5 bg-gray-300 rounded-lg appearance-none cursor-pointer accent-blue-600">
-                <span id="prop-value" class="text-xs font-mono w-4 text-gray-600">5</span>
+            <div id="prop-controls" class="hidden flex items-center space-x-3 bg-gray-50 border border-gray-200 rounded-md px-3 py-1 animate-in fade-in slide-in-from-left-2 duration-200">
+                <div class="flex items-center space-x-1">
+                    <span id="prop-label" class="text-[10px] font-bold text-gray-500 uppercase">Size</span>
+                    <input type="range" id="prop-slider" min="1" max="50" value="5" class="w-20 h-1.5 bg-gray-300 rounded-lg appearance-none cursor-pointer accent-blue-600">
+                    <span id="prop-value" class="text-xs font-mono w-4 text-gray-600">5</span>
+                </div>
+                <div class="h-4 w-px bg-gray-300"></div>
+                <div class="flex items-center space-x-1">
+                    <span class="text-[10px] font-bold text-gray-500 uppercase">Color</span>
+                    <input type="color" id="prop-color" value="#ff0000" class="w-6 h-6 p-0 border-none rounded cursor-pointer bg-transparent">
+                </div>
             </div>
             
             <button id="send-to-back" class="px-3 py-2 bg-gray-600 text-white text-sm rounded-md hover:bg-gray-700 transition font-medium flex items-center gap-1" title="最背面に移動">
@@ -142,6 +149,7 @@
         const addCircleBtn = document.getElementById('add-highlight-circle');
         const propControls = document.getElementById('prop-controls');
         const propSlider = document.getElementById('prop-slider');
+        const propColor = document.getElementById('prop-color');
         const propLabel = document.getElementById('prop-label');
         const propValueText = document.getElementById('prop-value');
         
@@ -215,7 +223,7 @@
                 cropStartBtn.classList.add('hidden');
             }
 
-            // プロパティスライダー表示制御
+            // プロパティコントロール表示制御
             propControls.classList.remove('hidden');
             if (selected.type === 'circle' && selected.stroke) {
                 propLabel.innerText = 'Line';
@@ -223,17 +231,20 @@
                 propSlider.max = 50;
                 propSlider.value = selected.strokeWidth;
                 propValueText.innerText = Math.round(selected.strokeWidth);
+                propColor.value = selected.stroke;
             } else if (selected.type === 'i-text' || selected.type === 'text') {
                 propLabel.innerText = 'Text';
                 propSlider.min = 10;
                 propSlider.max = 200;
                 propSlider.value = selected.fontSize;
                 propValueText.innerText = Math.round(selected.fontSize);
+                propColor.value = selected.fill;
             } else {
                 propControls.classList.add('hidden');
             }
         }
 
+        // スライダー操作
         propSlider.addEventListener('input', () => {
             const activeObj = canvas.getActiveObject();
             if (!activeObj) return;
@@ -250,6 +261,23 @@
         });
 
         propSlider.addEventListener('change', saveHistory);
+
+        // カラーピッカー操作
+        propColor.addEventListener('input', () => {
+            const activeObj = canvas.getActiveObject();
+            if (!activeObj) return;
+
+            const val = propColor.value;
+
+            if (activeObj.type === 'circle') {
+                activeObj.set('stroke', val);
+            } else if (activeObj.type === 'i-text' || activeObj.type === 'text') {
+                activeObj.set('fill', val);
+            }
+            canvas.renderAll();
+        });
+
+        propColor.addEventListener('change', saveHistory);
 
         // --- キャンバスサイズ変更 ---
         function updateCanvasSize() {
@@ -307,7 +335,7 @@
                 radius: 40,
                 fill: 'transparent',
                 stroke: '#ff0000',
-                strokeWidth: 5, // 初期値
+                strokeWidth: 5,
                 cornerColor: '#3b82f6',
                 cornerSize: 10,
                 transparentCorners: false
