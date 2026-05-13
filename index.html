@@ -63,7 +63,6 @@
 
             <div class="flex items-center space-x-1 bg-white border border-gray-300 rounded px-1">
                 <input type="number" id="canvas-width" value="800" class="w-14 px-1 py-1 text-xs text-center focus:outline-none bg-transparent" title="Width">
-                <!-- 縦横入れ替えボタン -->
                 <button id="swap-size" class="p-1 hover:bg-gray-100 rounded text-gray-400 hover:text-blue-600 transition" title="縦横を入れ替え">
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/></svg>
                 </button>
@@ -80,10 +79,23 @@
                 <span class="hidden sm:inline">戻す</span>
             </button>
             <div class="h-6 w-px bg-gray-200"></div>
+            
             <button id="add-text" class="px-3 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 transition font-medium flex items-center gap-1">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
                 <span class="hidden sm:inline">テキスト</span>
             </button>
+
+            <button id="add-highlight-circle" class="px-3 py-2 bg-red-100 border border-red-200 text-red-600 text-sm rounded-md hover:bg-red-200 transition font-bold flex items-center gap-1" title="注目点を赤丸で囲む">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="red" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/></svg>
+                <span class="hidden sm:inline">赤丸</span>
+            </button>
+
+            <!-- プロパティ調整パネル（選択時のみ表示） -->
+            <div id="prop-controls" class="hidden flex items-center space-x-2 bg-gray-50 border border-gray-200 rounded-md px-3 py-1 animate-in fade-in slide-in-from-left-2 duration-200">
+                <span id="prop-label" class="text-[10px] font-bold text-gray-500 uppercase">Size</span>
+                <input type="range" id="prop-slider" min="1" max="50" value="5" class="w-24 h-1.5 bg-gray-300 rounded-lg appearance-none cursor-pointer accent-blue-600">
+                <span id="prop-value" class="text-xs font-mono w-4 text-gray-600">5</span>
+            </div>
             
             <button id="send-to-back" class="px-3 py-2 bg-gray-600 text-white text-sm rounded-md hover:bg-gray-700 transition font-medium flex items-center gap-1" title="最背面に移動">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><path d="M12 8v8"/><path d="m9 13 3 3 3-3"/></svg>
@@ -127,6 +139,11 @@
         const cropConfirmBtn = document.getElementById('crop-confirm');
         const undoBtn = document.getElementById('undo-btn');
         const sendToBackBtn = document.getElementById('send-to-back');
+        const addCircleBtn = document.getElementById('add-highlight-circle');
+        const propControls = document.getElementById('prop-controls');
+        const propSlider = document.getElementById('prop-slider');
+        const propLabel = document.getElementById('prop-label');
+        const propValueText = document.getElementById('prop-value');
         
         let croppingImage = null;
         let cropRect = null;
@@ -146,23 +163,17 @@
         // --- 履歴保存機能 ---
         function saveHistory() {
             if (isProcessingUndo) return;
-            
             const json = canvas.toJSON();
             history.push(JSON.stringify(json));
-            
-            if (history.length > maxHistory) {
-                history.shift();
-            }
+            if (history.length > maxHistory) history.shift();
             updateUndoButtonState();
         }
 
         function undo() {
             if (history.length <= 1) return;
-            
             isProcessingUndo = true;
-            history.pop(); // 現在の状態を捨てる
+            history.pop();
             const prevState = history[history.length - 1];
-            
             canvas.loadFromJSON(prevState, () => {
                 canvas.renderAll();
                 isProcessingUndo = false;
@@ -174,50 +185,81 @@
             undoBtn.disabled = history.length <= 1;
         }
 
-        // キャンバスの変化を監視して履歴保存
         canvas.on('object:added', saveHistory);
         canvas.on('object:modified', saveHistory);
         canvas.on('object:removed', saveHistory);
 
-        // --- SHIFTキーによる回転スナップ機能 ---
+        // --- SHIFTキーによる回転スナップ ---
         canvas.on('object:rotating', (options) => {
-            if (options.e && options.e.shiftKey) {
-                options.target.snapAngle = 15;
-            } else {
-                options.target.snapAngle = 0;
-            }
+            options.target.snapAngle = (options.e && options.e.shiftKey) ? 15 : 0;
         });
 
-        // 初期の状態を保存
         saveHistory();
 
-        // --- 選択状態の監視 ---
+        // --- 選択状態の監視とプロパティ調整 ---
         canvas.on('selection:created', handleSelection);
         canvas.on('selection:updated', handleSelection);
         canvas.on('selection:cleared', () => {
             cropStartBtn.classList.add('hidden');
+            propControls.classList.add('hidden');
         });
 
         function handleSelection(e) {
             const selected = e.selected[0];
-            if (selected && selected.type === 'image' && !croppingImage) {
+            if (!selected) return;
+
+            // トリミングボタン表示制御
+            if (selected.type === 'image' && !croppingImage) {
                 cropStartBtn.classList.remove('hidden');
             } else {
                 cropStartBtn.classList.add('hidden');
             }
+
+            // プロパティスライダー表示制御
+            propControls.classList.remove('hidden');
+            if (selected.type === 'circle' && selected.stroke) {
+                propLabel.innerText = 'Line';
+                propSlider.min = 1;
+                propSlider.max = 50;
+                propSlider.value = selected.strokeWidth;
+                propValueText.innerText = Math.round(selected.strokeWidth);
+            } else if (selected.type === 'i-text' || selected.type === 'text') {
+                propLabel.innerText = 'Text';
+                propSlider.min = 10;
+                propSlider.max = 200;
+                propSlider.value = selected.fontSize;
+                propValueText.innerText = Math.round(selected.fontSize);
+            } else {
+                propControls.classList.add('hidden');
+            }
         }
 
-        // --- キャンバスサイズ変更機能 ---
+        propSlider.addEventListener('input', () => {
+            const activeObj = canvas.getActiveObject();
+            if (!activeObj) return;
+
+            const val = parseInt(propSlider.value);
+            propValueText.innerText = val;
+
+            if (activeObj.type === 'circle') {
+                activeObj.set('strokeWidth', val);
+            } else if (activeObj.type === 'i-text' || activeObj.type === 'text') {
+                activeObj.set('fontSize', val);
+            }
+            canvas.renderAll();
+        });
+
+        propSlider.addEventListener('change', saveHistory);
+
+        // --- キャンバスサイズ変更 ---
         function updateCanvasSize() {
             const width = parseInt(canvasWidthInput.value) || 100;
             const height = parseInt(canvasHeightInput.value) || 100;
-            
             canvas.setDimensions({ width, height });
             canvas.renderAll();
             saveHistory();
         }
 
-        // プリセット変更時の処理
         sizePreset.addEventListener('change', () => {
             const val = sizePreset.value;
             if (val !== 'custom') {
@@ -228,7 +270,6 @@
             }
         });
 
-        // 直接数値入力された時の処理
         const handleManualSizeChange = () => {
             sizePreset.value = 'custom';
             updateCanvasSize();
@@ -237,62 +278,68 @@
         canvasWidthInput.addEventListener('change', handleManualSizeChange);
         canvasHeightInput.addEventListener('change', handleManualSizeChange);
 
-        // 縦横入れ替えボタンの処理
         swapSizeBtn.addEventListener('click', () => {
             const currentW = canvasWidthInput.value;
-            const currentH = canvasHeightInput.value;
-            canvasWidthInput.value = currentH;
+            canvasWidthInput.value = canvasHeightInput.value;
             canvasHeightInput.value = currentW;
             handleManualSizeChange();
         });
 
-        // --- アンドゥ実行 ---
         undoBtn.addEventListener('click', undo);
 
-        // --- テキスト追加機能 ---
+        // --- オブジェクト追加機能 ---
         document.getElementById('add-text').addEventListener('click', () => {
             const text = new fabric.IText('ここをクリックして編集', {
                 left: canvas.width / 2 - 100,
                 top: canvas.height / 2 - 20,
                 fontFamily: 'sans-serif',
-                fontSize: 28,
+                fontSize: 32,
                 fill: '#333333'
             });
             canvas.add(text);
             canvas.setActiveObject(text);
         });
 
-        // --- 背面へ移動機能 ---
+        addCircleBtn.addEventListener('click', () => {
+            const circle = new fabric.Circle({
+                left: canvas.width / 2 - 40,
+                top: canvas.height / 2 - 40,
+                radius: 40,
+                fill: 'transparent',
+                stroke: '#ff0000',
+                strokeWidth: 5, // 初期値
+                cornerColor: '#3b82f6',
+                cornerSize: 10,
+                transparentCorners: false
+            });
+            canvas.add(circle);
+            canvas.setActiveObject(circle);
+        });
+
         sendToBackBtn.addEventListener('click', () => {
             const activeObjects = canvas.getActiveObjects();
             if (activeObjects.length) {
-                activeObjects.forEach(obj => {
-                    canvas.sendToBack(obj);
-                });
+                activeObjects.forEach(obj => canvas.sendToBack(obj));
                 canvas.discardActiveObject();
                 canvas.renderAll();
                 saveHistory();
             }
         });
 
-        // --- 画像ペースト機能 ---
+        // --- 画像ペースト ---
         window.addEventListener('paste', (e) => {
             const items = e.clipboardData.items;
             for (let i = 0; i < items.length; i++) {
                 if (items[i].type.indexOf('image') !== -1) {
                     const blob = items[i].getAsFile();
                     const reader = new FileReader();
-                    
                     reader.onload = function(event) {
                         fabric.Image.fromURL(event.target.result, (img) => {
-                            if (img.width > canvas.width * 0.9) {
-                                img.scaleToWidth(canvas.width * 0.8);
-                            }
+                            if (img.width > canvas.width * 0.9) img.scaleToWidth(canvas.width * 0.8);
                             img.set({
                                 left: canvas.width / 2 - (img.getScaledWidth() / 2),
                                 top: canvas.height / 2 - (img.getScaledHeight() / 2),
                                 cornerColor: '#3b82f6',
-                                cornerStrokeColor: '#1d4ed8',
                                 cornerSize: 10,
                                 transparentCorners: false
                             });
@@ -305,14 +352,12 @@
             }
         });
 
-        // --- トリミング機能 ---
+        // --- トリミング ---
         cropStartBtn.addEventListener('click', () => {
             const obj = canvas.getActiveObject();
             if (!obj || obj.type !== 'image') return;
-
             croppingImage = obj;
             canvas.getObjects().forEach(o => o.selectable = false);
-            
             cropRect = new fabric.Rect({
                 left: obj.left,
                 top: obj.top,
@@ -326,22 +371,18 @@
                 hasRotatingPoint: false,
                 transparentCorners: false
             });
-
             canvas.add(cropRect);
             canvas.setActiveObject(cropRect);
-            
             cropStartBtn.classList.add('hidden');
             cropConfirmBtn.classList.remove('hidden');
         });
 
         cropConfirmBtn.addEventListener('click', () => {
             if (!croppingImage || !cropRect) return;
-
             const left = (cropRect.left - croppingImage.left) / croppingImage.scaleX;
             const top = (cropRect.top - croppingImage.top) / croppingImage.scaleY;
             const width = cropRect.getScaledWidth() / croppingImage.scaleX;
             const height = cropRect.getScaledHeight() / croppingImage.scaleY;
-
             croppingImage.set({
                 clipPath: new fabric.Rect({
                     left: left - (croppingImage.width / 2),
@@ -350,7 +391,6 @@
                     height: height
                 })
             });
-
             croppingImage.cloneAsImage((cloned) => {
                 canvas.remove(croppingImage);
                 canvas.add(cloned);
@@ -368,21 +408,17 @@
             canvas.renderAll();
         }
 
-        // --- 削除機能 ---
         const deleteActiveObjects = () => {
             const activeObjects = canvas.getActiveObjects();
             if (activeObjects.length) {
                 canvas.discardActiveObject();
-                activeObjects.forEach((obj) => {
-                    canvas.remove(obj);
-                });
+                activeObjects.forEach(obj => canvas.remove(obj));
                 canvas.requestRenderAll();
             }
         };
 
         document.getElementById('delete-obj').addEventListener('click', deleteActiveObjects);
 
-        // --- PNG保存機能 ---
         document.getElementById('download-btn').addEventListener('click', () => {
             const dataURL = canvas.toDataURL({ format: 'png', quality: 1 });
             const link = document.createElement('a');
@@ -391,17 +427,11 @@
             link.click();
         });
 
-        // キーボード操作
         window.addEventListener('keydown', (e) => {
-            // アンドゥ (Ctrl+Z / Cmd+Z)
             if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
                 e.preventDefault();
                 undo();
-                return;
-            }
-
-            // 削除
-            if (e.key === 'Delete' || e.key === 'Backspace') {
+            } else if (e.key === 'Delete' || e.key === 'Backspace') {
                 const activeObject = canvas.getActiveObject();
                 if (activeObject && activeObject.isEditing) return;
                 deleteActiveObjects();
