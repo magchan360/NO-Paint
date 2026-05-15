@@ -113,7 +113,7 @@
                         <span class="text-[10px] font-bold text-gray-500 uppercase">Outline</span>
                         <div class="flex bg-white border border-gray-200 rounded-md overflow-hidden">
                             <button id="toggle-stroke" class="px-2 py-1 text-[10px] font-bold hover:bg-gray-100 border-r border-gray-200 transition">縁取り</button>
-                            <input type="color" id="prop-stroke-color" value="#000000" class="w-6 h-6 p-0 border-none cursor-pointer bg-transparent">
+                            <input type="color" id="prop-stroke-color" value="#ffffff" class="w-6 h-6 p-0 border-none cursor-pointer bg-transparent">
                         </div>
                     </div>
                     <div class="h-4 w-px bg-gray-300"></div>
@@ -302,7 +302,7 @@
                 textSpecificControls.classList.remove('hidden');
                 const isStrokeOn = !!selected.paintStrokeEnabled;
                 toggleStrokeBtn.classList.toggle('active', isStrokeOn);
-                propStrokeColor.value = selected.stroke || '#000000';
+                propStrokeColor.value = selected.stroke || '#ffffff';
                 if (selected.backgroundColor) {
                     const data = rgbaToData(selected.backgroundColor);
                     propBgColor.value = data.hex;
