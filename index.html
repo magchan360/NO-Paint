@@ -34,7 +34,7 @@
         ::-webkit-scrollbar-thumb:hover {
             background: #bbb;
         }
-        .align-btn.active {
+        .align-btn.active, .toggle-btn.active {
             background-color: #3b82f6;
             color: white;
             border-color: #2563eb;
@@ -86,65 +86,50 @@
             </button>
 
             <div class="flex bg-gray-100 p-1 rounded-md border border-gray-200">
-                <button id="add-highlight-circle" class="p-2 hover:bg-red-200 text-red-600 rounded transition"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"/></svg></button>
-                <button id="add-highlight-rect" class="p-2 hover:bg-red-200 text-red-600 rounded transition"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/></svg></button>
-                <button id="add-highlight-arrow" class="p-2 hover:bg-red-200 text-red-600 rounded transition"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M21 3L9 15"/><path d="M11 21L3 21L3 13L11 21Z" fill="currentColor"/></svg></button>
+                <button id="add-highlight-circle" class="p-2 hover:bg-red-200 text-red-600 rounded transition" title="円"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"/></svg></button>
+                <button id="add-highlight-rect" class="p-2 hover:bg-red-200 text-red-600 rounded transition" title="四角"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/></svg></button>
+                <button id="add-highlight-arrow" class="p-2 hover:bg-red-200 text-red-600 rounded transition" title="矢印"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M21 3L9 15"/><path d="M11 21L3 21L3 13L11 21Z" fill="currentColor"/></svg></button>
                 <div class="w-px bg-gray-300 mx-1"></div>
-                <button id="add-highlight-star" class="p-2 hover:bg-yellow-100 text-yellow-600 rounded transition"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button>
-                <button id="add-highlight-heart" class="p-2 hover:bg-pink-100 text-pink-600 rounded transition"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg></button>
+                <button id="add-highlight-star" class="p-2 hover:bg-yellow-100 text-yellow-600 rounded transition" title="星"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button>
+                <button id="add-highlight-heart" class="p-2 hover:bg-pink-100 text-pink-600 rounded transition" title="ハート"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg></button>
             </div>
 
             <!-- Property Panel -->
-            <div id="prop-controls" class="hidden flex items-center space-x-3 bg-gray-50 border border-gray-200 rounded-md px-3 py-1 shadow-inner">
-                <!-- Size/Stroke Slider -->
+            <div id="prop-controls" class="hidden flex items-center space-x-3 bg-gray-50 border border-gray-200 rounded-md px-3 py-1 shadow-sm">
                 <div class="flex items-center space-x-1">
                     <span id="prop-label" class="text-[10px] font-bold text-gray-500 uppercase">Size</span>
                     <input type="range" id="prop-slider" min="1" max="50" value="5" class="w-20 h-1.5 bg-gray-300 rounded-lg appearance-none cursor-pointer accent-blue-600">
                     <span id="prop-value" class="text-xs font-mono w-4 text-gray-600">5</span>
                 </div>
-                
                 <div class="h-4 w-px bg-gray-300"></div>
-                
-                <!-- Main Opacity -->
                 <div class="flex items-center space-x-1">
                     <span class="text-[10px] font-bold text-gray-500 uppercase">Opacity</span>
                     <input type="range" id="prop-opacity" min="0" max="100" value="100" class="w-16 h-1.5 bg-gray-300 rounded-lg appearance-none cursor-pointer accent-blue-600">
                     <span id="prop-opacity-value" class="text-xs font-mono w-6 text-gray-600">100</span>
                 </div>
-                
                 <div class="h-4 w-px bg-gray-300"></div>
-                
-                <!-- Main Color -->
-                <div class="flex items-center space-x-1" title="文字の色 / 塗り色">
+                <div class="flex items-center space-x-1">
                     <input type="color" id="prop-color" value="#ff0000" class="w-6 h-6 p-0 border-none rounded cursor-pointer bg-transparent">
                 </div>
-
-                <!-- Text Specific Controls (Stroke & Background) -->
                 <div id="text-specific-controls" class="hidden flex items-center space-x-3 border-l border-gray-300 pl-3">
-                    <!-- Stroke (縁取り) -->
-                    <div class="flex items-center space-x-2" title="文字の縁取り">
-                        <span class="text-[10px] font-bold text-gray-500 uppercase">Stroke</span>
-                        <input type="color" id="prop-stroke-color" value="#000000" class="w-6 h-6 p-0 border-none rounded cursor-pointer bg-transparent">
-                        <input type="range" id="prop-stroke-width" min="0" max="10" step="0.5" value="0" class="w-16 h-1.5 bg-gray-300 rounded-lg appearance-none cursor-pointer accent-blue-600">
-                        <span id="prop-stroke-value" class="text-xs font-mono w-4 text-gray-600">0</span>
+                    <div class="flex items-center space-x-2">
+                        <span class="text-[10px] font-bold text-gray-500 uppercase">Outline</span>
+                        <div class="flex bg-white border border-gray-200 rounded-md overflow-hidden">
+                            <button id="toggle-stroke" class="px-2 py-1 text-[10px] font-bold hover:bg-gray-100 border-r border-gray-200 transition">縁取り</button>
+                            <input type="color" id="prop-stroke-color" value="#000000" class="w-6 h-6 p-0 border-none cursor-pointer bg-transparent">
+                        </div>
                     </div>
-                    
                     <div class="h-4 w-px bg-gray-300"></div>
-
-                    <!-- Background (座布団) -->
-                    <div class="flex items-center space-x-2" title="文字の背景色">
+                    <div class="flex items-center space-x-2">
                         <span class="text-[10px] font-bold text-gray-500 uppercase">BG</span>
                         <input type="color" id="prop-bg-color" value="#ffffff" class="w-6 h-6 p-0 border-none rounded cursor-pointer bg-transparent">
                         <input type="range" id="prop-bg-opacity" min="0" max="100" value="100" class="w-16 h-1.5 bg-gray-300 rounded-lg appearance-none cursor-pointer accent-blue-600">
                         <span id="prop-bg-opacity-value" class="text-xs font-mono w-6 text-gray-600">100</span>
-                        <button id="clear-bg-color" class="p-1 hover:bg-gray-200 rounded text-gray-400" title="背景を透明にする">
+                        <button id="clear-bg-color" class="p-1 hover:bg-gray-200 rounded text-gray-400">
                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                         </button>
                     </div>
-
                     <div class="h-4 w-px bg-gray-300"></div>
-
-                    <!-- Alignment -->
                     <div class="flex items-center bg-white border border-gray-200 rounded-md p-1">
                         <button id="align-left" class="align-btn p-1 hover:bg-gray-100 rounded text-gray-600"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="21" y1="6" x2="3" y2="6"/><line x1="15" y1="12" x2="3" y2="12"/><line x1="17" y1="18" x2="3" y2="18"/></svg></button>
                         <button id="align-center" class="align-btn p-1 hover:bg-gray-100 rounded text-gray-600"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="21" y1="6" x2="3" y2="6"/><line x1="17" y1="12" x2="7" y2="12"/><line x1="19" y1="18" x2="5" y2="18"/></svg></button>
@@ -198,9 +183,8 @@
         const propColor = document.getElementById('prop-color');
         
         const textSpecificControls = document.getElementById('text-specific-controls');
+        const toggleStrokeBtn = document.getElementById('toggle-stroke');
         const propStrokeColor = document.getElementById('prop-stroke-color');
-        const propStrokeWidth = document.getElementById('prop-stroke-width');
-        const propStrokeValueText = document.getElementById('prop-stroke-value');
         
         const propBgColor = document.getElementById('prop-bg-color');
         const propBgOpacity = document.getElementById('prop-bg-opacity');
@@ -224,9 +208,10 @@
             preserveObjectStacking: true
         });
 
+        // --- History ---
         function saveHistory() {
             if (isProcessingUndo) return;
-            const json = canvas.toJSON(['isFilledShape']);
+            const json = canvas.toJSON(['isFilledShape', 'paintStrokeEnabled']);
             history.push(JSON.stringify(json));
             if (history.length > maxHistory) history.shift();
             updateUndoButtonState();
@@ -252,6 +237,7 @@
         canvas.on('object:modified', saveHistory);
         canvas.on('object:removed', saveHistory);
 
+        // --- Helpers ---
         function hexToRgba(hex, opacity) {
             let r = parseInt(hex.slice(1, 3), 16),
                 g = parseInt(hex.slice(3, 5), 16),
@@ -268,21 +254,33 @@
             return { hex: `#${r}${g}${b}`, alpha: parseFloat(parts[3]) };
         }
 
-        canvas.on('mouse:down', function(options) {
-            const isControlPressed = options.e.ctrlKey || options.e.metaKey;
-            if (isControlPressed && options.target && !options.target.isEditing) {
-                const target = options.target;
-                target.clone(function(cloned) {
+        // --- Correct Ctrl + Drag to Copy Logic ---
+        let dragOriginalX = 0;
+        let dragOriginalY = 0;
+
+        canvas.on('mouse:down', (options) => {
+            const target = options.target;
+            // Ctrlキーが押されている場合のみ複製処理を行う
+            if ((options.e.ctrlKey || options.e.metaKey) && target && target.selectable) {
+                // 元のオブジェクトの位置を記録
+                dragOriginalX = target.left;
+                dragOriginalY = target.top;
+
+                // 複製を作成
+                target.clone((cloned) => {
+                    // クローンしたものを「元の場所」に配置して追加
+                    cloned.set({
+                        left: dragOriginalX,
+                        top: dragOriginalY
+                    });
                     canvas.add(cloned);
-                    canvas.setActiveObject(cloned);
-                    canvas._setupCurrentTransform(options.e, cloned);
-                    canvas.requestRenderAll();
-                });
-                options.e.preventDefault();
-                options.e.stopPropagation();
+                    // canvas.setActiveObject(target); // マウスで掴んでいる方は元のtargetのままにする
+                    canvas.renderAll();
+                }, ['isFilledShape', 'paintStrokeEnabled']);
             }
         });
 
+        // --- Selection handling ---
         canvas.on('selection:created', handleSelection);
         canvas.on('selection:updated', handleSelection);
         canvas.on('selection:cleared', () => {
@@ -304,15 +302,10 @@
                 propSlider.value = selected.fontSize;
                 propValueText.innerText = Math.round(selected.fontSize);
                 propColor.value = selected.fill;
-                
                 textSpecificControls.classList.remove('hidden');
-                
-                // Stroke restoration
+                const isStrokeOn = !!selected.paintStrokeEnabled;
+                toggleStrokeBtn.classList.toggle('active', isStrokeOn);
                 propStrokeColor.value = selected.stroke || '#000000';
-                propStrokeWidth.value = selected.strokeWidth || 0;
-                propStrokeValueText.innerText = selected.strokeWidth || 0;
-
-                // BG restoration
                 if (selected.backgroundColor) {
                     const data = rgbaToData(selected.backgroundColor);
                     propBgColor.value = data.hex;
@@ -341,6 +334,7 @@
             }
         }
 
+        // --- Property Control Listeners ---
         propSlider.addEventListener('input', () => {
             const activeObj = canvas.getActiveObject();
             if (!activeObj) return;
@@ -371,23 +365,32 @@
         });
         propColor.addEventListener('change', saveHistory);
 
-        // Text Stroke
-        const updateStroke = () => {
+        toggleStrokeBtn.addEventListener('click', () => {
             const activeObj = canvas.getActiveObject();
             if (!activeObj || !(activeObj.type === 'i-text' || activeObj.type === 'textbox')) return;
+            const isCurrentlyOn = !!activeObj.paintStrokeEnabled;
+            const newStatus = !isCurrentlyOn;
             activeObj.set({
-                stroke: propStrokeColor.value,
-                strokeWidth: parseFloat(propStrokeWidth.value)
+                paintStrokeEnabled: newStatus,
+                stroke: newStatus ? propStrokeColor.value : null,
+                strokeWidth: newStatus ? 2 : 0,
+                paintFirst: 'stroke',
+                strokeLineJoin: 'round',
+                strokeLineCap: 'round'
             });
-            propStrokeValueText.innerText = propStrokeWidth.value;
+            toggleStrokeBtn.classList.toggle('active', newStatus);
             canvas.renderAll();
-        };
-        propStrokeColor.addEventListener('input', updateStroke);
-        propStrokeColor.addEventListener('change', saveHistory);
-        propStrokeWidth.addEventListener('input', updateStroke);
-        propStrokeWidth.addEventListener('change', saveHistory);
+            saveHistory();
+        });
 
-        // Text Background
+        propStrokeColor.addEventListener('input', () => {
+            const activeObj = canvas.getActiveObject();
+            if (!activeObj || !activeObj.paintStrokeEnabled) return;
+            activeObj.set('stroke', propStrokeColor.value);
+            canvas.renderAll();
+        });
+        propStrokeColor.addEventListener('change', saveHistory);
+
         const updateBgColor = () => {
             const activeObj = canvas.getActiveObject();
             if (!activeObj || !(activeObj.type === 'i-text' || activeObj.type === 'textbox')) return;
@@ -420,6 +423,7 @@
         alignCenterBtn.addEventListener('click', () => setTextAlign('center'));
         alignRightBtn.addEventListener('click', () => setTextAlign('right'));
 
+        // --- Size Controls ---
         function updateCanvasSize() {
             canvas.setDimensions({ width: parseInt(canvasWidthInput.value), height: parseInt(canvasHeightInput.value) });
             saveHistory();
@@ -437,8 +441,12 @@
             updateCanvasSize();
         });
 
+        // --- Spawning ---
         document.getElementById('add-text').addEventListener('click', () => {
-            const t = new fabric.Textbox('Text', { left: 100, top: 100, width: 200, fontSize: 32, fill: propColor.value, fontFamily: 'sans-serif' });
+            const t = new fabric.Textbox('Text', { 
+                left: 100, top: 100, width: 200, fontSize: 32, fill: propColor.value, 
+                fontFamily: 'sans-serif', fontWeight: 'bold'
+            });
             canvas.add(t).setActiveObject(t);
         });
         addCircleBtn.addEventListener('click', () => {
@@ -480,7 +488,7 @@
 
         document.getElementById('download-btn').addEventListener('click', () => {
             const link = document.createElement('a');
-            link.download = `paint-${Date.now()}.png`;
+            link.download = `no-paint-${Date.now()}.png`;
             link.href = canvas.toDataURL({ format: 'png', quality: 1 });
             link.click();
         });
