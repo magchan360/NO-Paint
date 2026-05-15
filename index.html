@@ -98,6 +98,9 @@
                 <button id="add-highlight-circle" class="p-2 hover:bg-red-200 text-red-600 rounded transition" title="注目点を赤丸で囲む">
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/></svg>
                 </button>
+                <button id="add-highlight-rect" class="p-2 hover:bg-red-200 text-red-600 rounded transition" title="四角形で囲む">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/></svg>
+                </button>
                 <button id="add-highlight-arrow" class="p-2 hover:bg-red-200 text-red-600 rounded transition" title="矢印で指し示す">
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 3L9 15"/><path d="M11 21L3 21L3 13L11 21Z" fill="currentColor"/></svg>
                 </button>
@@ -109,6 +112,12 @@
                     <span id="prop-label" class="text-[10px] font-bold text-gray-500 uppercase">Size</span>
                     <input type="range" id="prop-slider" min="1" max="50" value="5" class="w-20 h-1.5 bg-gray-300 rounded-lg appearance-none cursor-pointer accent-blue-600">
                     <span id="prop-value" class="text-xs font-mono w-4 text-gray-600">5</span>
+                </div>
+                <div class="h-4 w-px bg-gray-300"></div>
+                <div class="flex items-center space-x-1">
+                    <span class="text-[10px] font-bold text-gray-500 uppercase">Opacity</span>
+                    <input type="range" id="prop-opacity" min="0" max="100" value="100" class="w-16 h-1.5 bg-gray-300 rounded-lg appearance-none cursor-pointer accent-blue-600">
+                    <span id="prop-opacity-value" class="text-xs font-mono w-6 text-gray-600">100</span>
                 </div>
                 <div class="h-4 w-px bg-gray-300"></div>
                 <div class="flex items-center space-x-1">
@@ -191,9 +200,12 @@
         const undoBtn = document.getElementById('undo-btn');
         const sendToBackBtn = document.getElementById('send-to-back');
         const addCircleBtn = document.getElementById('add-highlight-circle');
+        const addRectBtn = document.getElementById('add-highlight-rect');
         const addArrowBtn = document.getElementById('add-highlight-arrow');
         const propControls = document.getElementById('prop-controls');
         const propSlider = document.getElementById('prop-slider');
+        const propOpacity = document.getElementById('prop-opacity');
+        const propOpacityValueText = document.getElementById('prop-opacity-value');
         const propColor = document.getElementById('prop-color');
         const propLabel = document.getElementById('prop-label');
         const propValueText = document.getElementById('prop-value');
@@ -295,7 +307,11 @@
             propControls.classList.remove('hidden');
             textExtraControls.classList.add('hidden');
 
-            if ((selected.type === 'circle' || selected.type === 'path') && selected.stroke) {
+            // 共通の不透明度設定を反映
+            propOpacity.value = Math.round((selected.opacity || 1) * 100);
+            propOpacityValueText.innerText = propOpacity.value;
+
+            if ((selected.type === 'circle' || selected.type === 'rect' || selected.type === 'path') && selected.stroke) {
                 propLabel.innerText = 'Line';
                 propSlider.min = 1;
                 propSlider.max = 50;
@@ -337,7 +353,10 @@
                     }
                 }
             } else {
-                propControls.classList.add('hidden');
+                // 画像などの場合は一部コントロールを隠す
+                propLabel.innerText = 'Size';
+                propSlider.min = 10; 
+                propSlider.max = 100; // 適当なダミー
             }
         }
 
@@ -361,7 +380,7 @@
         alignCenterBtn.addEventListener('click', () => setTextAlign('center'));
         alignRightBtn.addEventListener('click', () => setTextAlign('right'));
 
-        // スライダー操作
+        // サイズ/線の太さスライダー操作
         propSlider.addEventListener('input', () => {
             const activeObj = canvas.getActiveObject();
             if (!activeObj) return;
@@ -369,7 +388,7 @@
             const val = parseInt(propSlider.value);
             propValueText.innerText = val;
 
-            if (activeObj.type === 'circle' || activeObj.type === 'path') {
+            if (activeObj.type === 'circle' || activeObj.type === 'rect' || activeObj.type === 'path') {
                 activeObj.set('strokeWidth', val);
             } else if (activeObj.type === 'i-text' || activeObj.type === 'textbox') {
                 activeObj.set('fontSize', val);
@@ -379,6 +398,19 @@
 
         propSlider.addEventListener('change', saveHistory);
 
+        // 図形全体の不透明度スライダー操作
+        propOpacity.addEventListener('input', () => {
+            const activeObj = canvas.getActiveObject();
+            if (!activeObj) return;
+
+            const val = parseInt(propOpacity.value);
+            propOpacityValueText.innerText = val;
+            activeObj.set('opacity', val / 100);
+            canvas.renderAll();
+        });
+
+        propOpacity.addEventListener('change', saveHistory);
+
         // カラーピッカー操作
         propColor.addEventListener('input', () => {
             const activeObj = canvas.getActiveObject();
@@ -386,7 +418,7 @@
 
             const val = propColor.value;
 
-            if (activeObj.type === 'circle' || activeObj.type === 'path') {
+            if (activeObj.type === 'circle' || activeObj.type === 'rect' || activeObj.type === 'path') {
                 activeObj.set('stroke', val);
                 // 矢印パスの場合は矢じり（fill）も更新する
                 if (activeObj.type === 'path') {
@@ -513,27 +545,47 @@
                 strokeUniform: true,
                 cornerColor: '#3b82f6',
                 cornerSize: 10,
-                transparentCorners: false
+                transparentCorners: false,
+                opacity: 1
             });
             canvas.add(circle);
             canvas.setActiveObject(circle);
         });
 
+        addRectBtn.addEventListener('click', () => {
+            const rect = new fabric.Rect({
+                left: canvas.width / 2 - 50,
+                top: canvas.height / 2 - 40,
+                width: 100,
+                height: 80,
+                fill: 'transparent',
+                stroke: '#ff0000',
+                strokeWidth: 5,
+                strokeUniform: true,
+                cornerColor: '#3b82f6',
+                cornerSize: 10,
+                transparentCorners: false,
+                opacity: 1
+            });
+            canvas.add(rect);
+            canvas.setActiveObject(rect);
+        });
+
         addArrowBtn.addEventListener('click', () => {
-            // 右上から左下へ伸びる矢印のパス（鋭角な三角形のクローズド矢じり）
             const arrowPath = 'M 40 0 L 12 28 M 18 34 L 0 40 L 6 22 Z';
             const arrow = new fabric.Path(arrowPath, {
                 left: canvas.width / 2 - 20,
                 top: canvas.height / 2 - 20,
                 stroke: '#ff0000',
                 strokeWidth: 5,
-                fill: '#ff0000', // 矢じりを塗りつぶす
+                fill: '#ff0000', 
                 strokeUniform: true,
                 strokeLineCap: 'round',
                 strokeLineJoin: 'round',
                 cornerColor: '#3b82f6',
                 cornerSize: 10,
-                transparentCorners: false
+                transparentCorners: false,
+                opacity: 1
             });
             canvas.add(arrow);
             canvas.setActiveObject(arrow);
