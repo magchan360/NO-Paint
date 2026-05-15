@@ -218,7 +218,7 @@
         
         let croppingImage = null;
         let cropRect = null;
-        let clipboard = null; // Memory buffer for app-internal copy
+        let clipboard = null;
 
         let history = [];
         const maxHistory = 50;
@@ -267,52 +267,61 @@
         canvas.on('object:added', saveHistory);
         canvas.on('object:modified', saveHistory);
         canvas.on('object:removed', saveHistory);
-        canvas.on('object:rotating', (options) => {
-            options.target.snapAngle = (options.e && options.e.shiftKey) ? 15 : 0;
-        });
-
-        saveHistory();
 
         // --- CORE COPY & PASTE LOGIC ---
         function copyObject() {
             const activeObject = canvas.getActiveObject();
             if (!activeObject) return;
-            
-            activeObject.clone((cloned) => {
-                clipboard = cloned;
-            });
+            activeObject.clone((cloned) => { clipboard = cloned; });
         }
 
         function pasteObject() {
             if (!clipboard) return;
-
             clipboard.clone((clonedObj) => {
                 canvas.discardActiveObject();
-                clonedObj.set({
-                    left: clonedObj.left + 20,
-                    top: clonedObj.top + 20,
-                    evented: true,
-                });
-
+                clonedObj.set({ left: clonedObj.left + 20, top: clonedObj.top + 20, evented: true });
                 if (clonedObj.type === 'activeSelection') {
                     clonedObj.canvas = canvas;
-                    clonedObj.forEachObject((obj) => {
-                        canvas.add(obj);
-                    });
+                    clonedObj.forEachObject(obj => canvas.add(obj));
                     clonedObj.setCoords();
                 } else {
                     canvas.add(clonedObj);
                 }
-
-                // Increment offset for next paste
                 clipboard.top += 20;
                 clipboard.left += 20;
-
                 canvas.setActiveObject(clonedObj);
                 canvas.requestRenderAll();
                 saveHistory();
             });
         }
+
+        // --- NEW: CTRL + DRAG DUPLICATE ---
+        canvas.on('mouse:down', function(options) {
+            // Ctrlキーが押されており、かつ何らかのオブジェクトをクリックした場合
+            if (options.e.ctrlKey && options.target && !options.target.isEditing) {
+                const target = options.target;
+                
+                // ターゲットを複製
+                target.clone(function(cloned) {
+                    canvas.add(cloned);
+                    // 元のオブジェクトの代わりに、複製された方をドラッグ状態にする
+                    canvas.setActiveObject(cloned);
+                    // ドラッグ開始（Fabricの内部状態に合わせて座標を微調整）
+                    cloned.set({
+                        left: target.left,
+                        top: target.top
+                    });
+                    canvas.renderAll();
+                    
+                    // Fabric.jsのドラッグ操作を継続させるためのフラグ設定
+                    canvas._setupCurrentTransform(options.e, cloned);
+                });
+                
+                // 元の選択イベント等を抑制
+                options.e.preventDefault();
+                options.e.stopPropagation();
+            }
+        });
 
         // --- Selection Handlers ---
         canvas.on('selection:created', handleSelection);
@@ -353,14 +362,10 @@
                 propSlider.value = selected.fontSize;
                 propValueText.innerText = Math.round(selected.fontSize);
                 propColor.value = selected.fill;
-
                 textExtraControls.classList.remove('hidden');
                 textStrokeToggle.checked = !!selected.stroke;
-                const hasBg = !!selected.backgroundColor;
-                textBgToggle.checked = hasBg;
+                textBgToggle.checked = !!selected.backgroundColor;
                 updateAlignButtons(selected.textAlign);
-            } else {
-                propLabel.innerText = 'Size';
             }
         }
 
@@ -427,11 +432,7 @@
         textStrokeToggle.addEventListener('change', () => {
             const activeObj = canvas.getActiveObject();
             if (!activeObj || (activeObj.type !== 'i-text' && activeObj.type !== 'textbox')) return;
-            if (textStrokeToggle.checked) {
-                activeObj.set({ stroke: '#ffffff', strokeWidth: 2 });
-            } else {
-                activeObj.set({ stroke: null, strokeWidth: 0 });
-            }
+            activeObj.set(textStrokeToggle.checked ? { stroke: '#ffffff', strokeWidth: 2 } : { stroke: null, strokeWidth: 0 });
             canvas.renderAll();
             saveHistory();
         });
@@ -564,9 +565,7 @@
             }
         });
 
-        // --- External Clipboard (Images) Handling ---
         window.addEventListener('paste', (e) => {
-            // Check for images in browser clipboard
             const items = (e.clipboardData || e.originalEvent.clipboardData).items;
             for (let i = 0; i < items.length; i++) {
                 if (items[i].type.indexOf('image') !== -1) {
@@ -588,7 +587,7 @@
                         });
                     };
                     reader.readAsDataURL(blob);
-                    return; // If image paste detected, we don't proceed to internal paste
+                    return;
                 }
             }
         });
@@ -667,36 +666,20 @@
             link.click();
         });
 
-        // Key bindings for keyboard interaction
         window.addEventListener('keydown', (e) => {
             const activeObject = canvas.getActiveObject();
             const isEditing = activeObject && activeObject.isEditing;
-
-            // Undo: Ctrl+Z
             if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
                 if (isEditing) return;
                 e.preventDefault();
                 undo();
-            } 
-            // Copy: Ctrl+C
-            else if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
+            } else if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
                 if (isEditing) return;
-                // No preventDefault() here to allow browser copy if needed,
-                // but we trigger our app internal copy.
                 copyObject();
-            } 
-            // Paste: Ctrl+V
-            else if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
+            } else if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
                 if (isEditing) return;
-                // Check if we have something in our app memory first
-                if (clipboard) {
-                    e.preventDefault(); // Stop browser from doing anything else
-                    pasteObject();
-                }
-                // If clipboard is empty, browser 'paste' event will handle external image files
-            } 
-            // Delete: Del / Backspace
-            else if (e.key === 'Delete' || e.key === 'Backspace') {
+                if (clipboard) { e.preventDefault(); pasteObject(); }
+            } else if (e.key === 'Delete' || e.key === 'Backspace') {
                 if (isEditing) return;
                 deleteActiveObjects();
             }
