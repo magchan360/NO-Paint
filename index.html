@@ -205,6 +205,44 @@
             preserveObjectStacking: true
         });
 
+
+        // --- 15度単位のスナップ回転設定 ---
+        canvas.on('before:transform', (options) => {
+            const e = options.e;
+            const target = options.transform.target;
+            
+            // Shiftキーが押されている間は15度単位でスナップ
+            if (e && e.shiftKey) {
+                target.snapAngle = 15;
+                target.snapThreshold = 15; // スナップを適用する感度
+            } else {
+                target.snapAngle = 0;
+            }
+        });
+
+        // 回転中にShiftキーを押し下げ/離した場合にも即座に反映させるための処理
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Shift') {
+                const activeObj = canvas.getActiveObject();
+                if (activeObj) {
+                    activeObj.snapAngle = 15;
+                    activeObj.snapThreshold = 15;
+                }
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (e.key === 'Shift') {
+                const activeObj = canvas.getActiveObject();
+                if (activeObj) {
+                    activeObj.snapAngle = 0;
+                }
+            }
+        });
+
+
+
+
         // --- History ---
         function saveHistory() {
             if (isProcessingUndo) return;
